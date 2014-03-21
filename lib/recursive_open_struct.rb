@@ -3,10 +3,13 @@ require 'ostruct'
 class RecursiveOpenStruct < OpenStruct
   VERSION = "0.4.5"
 
+  attr_reader :_parent
+
   def initialize(h=nil, args={})
     @recurse_over_arrays = args.fetch(:recurse_over_arrays,false)
     super(h)
     @sub_elements = {}
+    @_parent = args[:_parent]
   end
 
   def to_h
@@ -32,7 +35,7 @@ class RecursiveOpenStruct < OpenStruct
         define_method(name) do
           v = @table[name]
           if v.is_a?(Hash)
-            @sub_elements[name] ||= self.class.new(v, :recurse_over_arrays => @recurse_over_arrays)
+            @sub_elements[name] ||= self.class.new(v, :_parent => self, :recurse_over_arrays => @recurse_over_arrays)
           elsif v.is_a?(Array) and @recurse_over_arrays
             @sub_elements[name] ||= recurse_over_array v
           else
@@ -49,7 +52,7 @@ class RecursiveOpenStruct < OpenStruct
   def recurse_over_array array
     array.map do |a|
       if a.is_a? Hash
-        self.class.new(a, :recurse_over_arrays => true)
+        self.class.new(a, :_parent => self, :recurse_over_arrays => true)
       elsif a.is_a? Array
         recurse_over_array a
       else
