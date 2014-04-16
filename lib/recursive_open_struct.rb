@@ -33,7 +33,7 @@ class RecursiveOpenStruct < OpenStruct
           if v.is_a?(Hash)
             @sub_elements[name] ||= self.class.new(v, :_parent => self, :recurse_over_arrays => @recurse_over_arrays)
           elsif v.is_a?(Array) and @recurse_over_arrays
-            @sub_elements[name] ||= recurse_over_array v
+            @sub_elements[name] ||= recurse_over_array(v, name)
           else
             v
           end
@@ -41,13 +41,21 @@ class RecursiveOpenStruct < OpenStruct
         define_method("#{name}=") { |x| modifiable[name] = x }
         define_method("#{name}_as_a_hash") { @table[name] }
       end
+
     end
     name
   end
 
-  def recurse_over_array array
+  def recurse_over_array(array, name=nil)
     array.map do |a|
-      if a.is_a? Hash
+      if !name.nil?
+        if a.is_a? Hash
+          a.keys.each do |key|
+            self.class.send(:define_method, :"#{name}_by_#{key}") do |*arg|
+              self.send(:"#{name}").select { |x| x.send(:"#{key}") == arg.first }.first
+            end
+          end
+        end
         self.class.new(a, :_parent => self, :recurse_over_arrays => true)
       elsif a.is_a? Array
         recurse_over_array a
